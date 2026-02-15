@@ -1,0 +1,104 @@
+name: Build distributables
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  desktop:
+    name: Desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install desktop build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pygame pyinstaller
+
+      - name: Build executable with PyInstaller
+        run: python -m PyInstaller --onefile --name ManicWilly src/manicwilly_game.py
+
+      - name: Package Windows artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build/windows | Out-Null
+          Copy-Item dist/ManicWilly.exe build/windows/ManicWilly.exe
+          Compress-Archive -Path build/windows/ManicWilly.exe -DestinationPath build/windows/ManicWilly-windows.zip -Force
+
+      - name: Package macOS artifact
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p build/macos
+          cp dist/ManicWilly build/macos/ManicWilly
+          tar -czf build/macos/ManicWilly-macos.tar.gz -C build/macos ManicWilly
+
+      - name: Upload Windows artifact
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ManicWilly-windows
+          path: build/windows/ManicWilly-windows.zip
+
+      - name: Upload macOS artifact
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ManicWilly-macos
+          path: build/macos/ManicWilly-macos.tar.gz
+
+  android:
+    name: Android (Buildozer)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Android build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            git \
+            zip \
+            unzip \
+            openjdk-17-jdk \
+            autoconf \
+            libtool \
+            pkg-config \
+            zlib1g-dev \
+            libncurses5-dev \
+            libffi-dev \
+            libssl-dev
+          python -m pip install --upgrade pip
+          python -m pip install cython==0.29.36 buildozer
+
+      - name: Build Android APK
+        run: buildozer android debug
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ManicWilly-android
+          path: bin/*.apk

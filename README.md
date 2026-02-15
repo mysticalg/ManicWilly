@@ -44,4 +44,12 @@ pytest -q
 ./scripts/export_all.sh
 ```
 
-The export script builds a Linux distributable in this environment and documents how to produce Windows/macOS binaries on native runners and Android packages through Buildozer.
+The local export script builds a Linux distributable in this environment.
+
+GitHub Actions now builds distributables for:
+
+- Windows (`ManicWilly.exe` zipped artifact)
+- macOS (tar.gz artifact)
+- Android (debug `.apk` from Buildozer)
+
+Run the **Build distributables** workflow from the Actions tab (or on PR/push) and download artifacts from the workflow run.
