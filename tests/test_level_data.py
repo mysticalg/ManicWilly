@@ -17,6 +17,11 @@ def test_collectible_count_nontrivial():
     assert count_collectibles(payload) >= 20
 
 
+def test_full_game_has_large_room_count():
+    payload = load_rooms()
+    assert len(payload["rooms"]) >= 50
+
+
 def test_vertical_links_have_matching_stairs():
     payload = load_rooms()
     valid, msg = validate_stairs(payload)
