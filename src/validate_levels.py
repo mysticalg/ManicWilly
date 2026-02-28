@@ -46,9 +46,28 @@ def count_collectibles(payload: dict) -> int:
     return sum(len(v["collectibles"]) for v in payload["rooms"].values())
 
 
+def validate_stairs(payload: dict) -> tuple[bool, str]:
+    rooms = payload["rooms"]
+    for rid, room in rooms.items():
+        stairs = room.get("stairs", [])
+        for direction in ("up", "down"):
+            if direction in room["neighbors"]:
+                matching = [s for s in stairs if s.get("direction") == direction and s.get("target") == room["neighbors"][direction]]
+                if not matching:
+                    return False, f"room {rid} missing {direction} stair to {room['neighbors'][direction]}"
+            else:
+                wrong = [s for s in stairs if s.get("direction") == direction]
+                if wrong:
+                    return False, f"room {rid} has stray {direction} stair"
+    return True, "ok"
+
+
 if __name__ == "__main__":
     data = load_rooms()
     valid, msg = validate_graph(data)
+    if not valid:
+        raise SystemExit(msg)
+    valid, msg = validate_stairs(data)
     if not valid:
         raise SystemExit(msg)
     print(f"rooms={len(data['rooms'])} collectibles={count_collectibles(data)} status=ok")

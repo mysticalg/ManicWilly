@@ -3,87 +3,1060 @@
   "rooms": {
     "atrium": {
       "name": "The Atrium",
-      "neighbors": {"right": "gallery", "down": "cellar"},
-      "platforms": [[0, 560, 960, 20], [100, 470, 260, 18], [520, 430, 280, 18]],
-      "collectibles": [[180, 430], [630, 390]],
-      "enemies": [{"path": [[330, 540], [450, 540]], "speed": 80}]
+      "neighbors": {
+        "right": "gallery",
+        "down": "cellar"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          100,
+          470,
+          260,
+          18
+        ],
+        [
+          520,
+          430,
+          280,
+          18
+        ]
+      ],
+      "collectibles": [
+        [
+          180,
+          430
+        ],
+        [
+          630,
+          390
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              330,
+              540
+            ],
+            [
+              450,
+              540
+            ]
+          ],
+          "speed": 80
+        }
+      ],
+      "stairs": [
+        {
+          "rect": [
+            882,
+            0,
+            34,
+            560
+          ],
+          "direction": "down",
+          "target": "cellar"
+        }
+      ],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     },
     "gallery": {
       "name": "Oscillation Gallery",
-      "neighbors": {"left": "atrium", "right": "engine", "down": "vault"},
-      "platforms": [[0, 560, 960, 20], [220, 500, 220, 16], [600, 450, 260, 16]],
-      "collectibles": [[690, 410]],
-      "enemies": [{"path": [[250, 480], [390, 480], [250, 480]], "speed": 95}]
+      "neighbors": {
+        "left": "atrium",
+        "right": "engine",
+        "down": "vault"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          220,
+          500,
+          220,
+          16
+        ],
+        [
+          600,
+          450,
+          260,
+          16
+        ]
+      ],
+      "collectibles": [
+        [
+          690,
+          410
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              250,
+              480
+            ],
+            [
+              390,
+              480
+            ],
+            [
+              250,
+              480
+            ]
+          ],
+          "speed": 95
+        }
+      ],
+      "stairs": [
+        {
+          "rect": [
+            882,
+            0,
+            34,
+            560
+          ],
+          "direction": "down",
+          "target": "vault"
+        }
+      ],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     },
     "engine": {
       "name": "Turbo Engine Room",
-      "neighbors": {"left": "gallery", "down": "lattice"},
-      "platforms": [[0, 560, 960, 20], [120, 450, 150, 14], [360, 400, 140, 14], [620, 350, 170, 14]],
-      "collectibles": [[145, 415], [650, 315]],
-      "enemies": [{"path": [[120, 540], [760, 540]], "speed": 120}]
+      "neighbors": {
+        "left": "gallery",
+        "down": "lattice"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          120,
+          450,
+          150,
+          14
+        ],
+        [
+          360,
+          400,
+          140,
+          14
+        ],
+        [
+          620,
+          350,
+          170,
+          14
+        ]
+      ],
+      "collectibles": [
+        [
+          145,
+          415
+        ],
+        [
+          650,
+          315
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              120,
+              540
+            ],
+            [
+              760,
+              540
+            ]
+          ],
+          "speed": 120
+        }
+      ],
+      "stairs": [
+        {
+          "rect": [
+            882,
+            0,
+            34,
+            560
+          ],
+          "direction": "down",
+          "target": "lattice"
+        }
+      ],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     },
     "cellar": {
       "name": "Crystal Cellar",
-      "neighbors": {"up": "atrium", "right": "vault", "down": "garden"},
-      "platforms": [[0, 560, 960, 20], [40, 500, 120, 15], [260, 470, 140, 15], [500, 430, 150, 15], [760, 400, 130, 15]],
-      "collectibles": [[280, 440], [790, 370]],
-      "enemies": [{"path": [[40, 540], [860, 540]], "speed": 70}]
+      "neighbors": {
+        "up": "atrium",
+        "right": "vault",
+        "down": "garden"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          40,
+          500,
+          120,
+          15
+        ],
+        [
+          260,
+          470,
+          140,
+          15
+        ],
+        [
+          500,
+          430,
+          150,
+          15
+        ],
+        [
+          760,
+          400,
+          130,
+          15
+        ]
+      ],
+      "collectibles": [
+        [
+          280,
+          440
+        ],
+        [
+          790,
+          370
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              40,
+              540
+            ],
+            [
+              860,
+              540
+            ]
+          ],
+          "speed": 70
+        }
+      ],
+      "stairs": [
+        {
+          "rect": [
+            44,
+            0,
+            34,
+            560
+          ],
+          "direction": "up",
+          "target": "atrium"
+        },
+        {
+          "rect": [
+            882,
+            0,
+            34,
+            560
+          ],
+          "direction": "down",
+          "target": "garden"
+        }
+      ],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     },
     "vault": {
       "name": "Monochrome Vault",
-      "neighbors": {"up": "gallery", "left": "cellar", "right": "lattice", "down": "forge"},
-      "platforms": [[0, 560, 960, 20], [180, 500, 180, 16], [450, 450, 180, 16], [720, 400, 180, 16]],
-      "collectibles": [[220, 470], [500, 420]],
-      "enemies": [{"path": [[760, 380], [880, 380]], "speed": 85}]
+      "neighbors": {
+        "up": "gallery",
+        "left": "cellar",
+        "right": "lattice",
+        "down": "forge"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          180,
+          500,
+          180,
+          16
+        ],
+        [
+          450,
+          450,
+          180,
+          16
+        ],
+        [
+          720,
+          400,
+          180,
+          16
+        ]
+      ],
+      "collectibles": [
+        [
+          220,
+          470
+        ],
+        [
+          500,
+          420
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              760,
+              380
+            ],
+            [
+              880,
+              380
+            ]
+          ],
+          "speed": 85
+        }
+      ],
+      "stairs": [
+        {
+          "rect": [
+            44,
+            0,
+            34,
+            560
+          ],
+          "direction": "up",
+          "target": "gallery"
+        },
+        {
+          "rect": [
+            882,
+            0,
+            34,
+            560
+          ],
+          "direction": "down",
+          "target": "forge"
+        }
+      ],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     },
     "lattice": {
       "name": "Lattice Loop",
-      "neighbors": {"up": "engine", "left": "vault", "down": "spire"},
-      "platforms": [[0, 560, 960, 20], [80, 510, 160, 14], [320, 460, 160, 14], [560, 410, 160, 14], [760, 360, 120, 14]],
-      "collectibles": [[340, 430], [790, 330]],
-      "enemies": [{"path": [[85, 490], [230, 490], [85, 490]], "speed": 105}]
+      "neighbors": {
+        "up": "engine",
+        "left": "vault",
+        "down": "spire"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          80,
+          510,
+          160,
+          14
+        ],
+        [
+          320,
+          460,
+          160,
+          14
+        ],
+        [
+          560,
+          410,
+          160,
+          14
+        ],
+        [
+          760,
+          360,
+          120,
+          14
+        ]
+      ],
+      "collectibles": [
+        [
+          340,
+          430
+        ],
+        [
+          790,
+          330
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              85,
+              490
+            ],
+            [
+              230,
+              490
+            ],
+            [
+              85,
+              490
+            ]
+          ],
+          "speed": 105
+        }
+      ],
+      "stairs": [
+        {
+          "rect": [
+            44,
+            0,
+            34,
+            560
+          ],
+          "direction": "up",
+          "target": "engine"
+        },
+        {
+          "rect": [
+            882,
+            0,
+            34,
+            560
+          ],
+          "direction": "down",
+          "target": "spire"
+        }
+      ],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     },
     "garden": {
       "name": "Binary Garden",
-      "neighbors": {"up": "cellar", "right": "forge"},
-      "platforms": [[0, 560, 960, 20], [140, 500, 220, 14], [500, 470, 220, 14]],
-      "collectibles": [[210, 470], [610, 440]],
-      "enemies": [{"path": [[500, 450], [700, 450]], "speed": 75}]
+      "neighbors": {
+        "up": "cellar",
+        "right": "forge"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          140,
+          500,
+          220,
+          14
+        ],
+        [
+          500,
+          470,
+          220,
+          14
+        ]
+      ],
+      "collectibles": [
+        [
+          210,
+          470
+        ],
+        [
+          610,
+          440
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              500,
+              450
+            ],
+            [
+              700,
+              450
+            ]
+          ],
+          "speed": 75
+        }
+      ],
+      "stairs": [
+        {
+          "rect": [
+            44,
+            0,
+            34,
+            560
+          ],
+          "direction": "up",
+          "target": "cellar"
+        }
+      ],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     },
     "forge": {
       "name": "Chrome Forge",
-      "neighbors": {"up": "vault", "left": "garden", "right": "spire", "down": "catwalk"},
-      "platforms": [[0, 560, 960, 20], [80, 500, 140, 14], [300, 460, 180, 14], [600, 420, 180, 14]],
-      "collectibles": [[100, 470], [350, 430], [650, 390]],
-      "enemies": [{"path": [[620, 400], [760, 400], [620, 400]], "speed": 110}]
+      "neighbors": {
+        "up": "vault",
+        "left": "garden",
+        "right": "spire",
+        "down": "catwalk"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          80,
+          500,
+          140,
+          14
+        ],
+        [
+          300,
+          460,
+          180,
+          14
+        ],
+        [
+          600,
+          420,
+          180,
+          14
+        ]
+      ],
+      "collectibles": [
+        [
+          100,
+          470
+        ],
+        [
+          350,
+          430
+        ],
+        [
+          650,
+          390
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              620,
+              400
+            ],
+            [
+              760,
+              400
+            ],
+            [
+              620,
+              400
+            ]
+          ],
+          "speed": 110
+        }
+      ],
+      "stairs": [
+        {
+          "rect": [
+            44,
+            0,
+            34,
+            560
+          ],
+          "direction": "up",
+          "target": "vault"
+        },
+        {
+          "rect": [
+            882,
+            0,
+            34,
+            560
+          ],
+          "direction": "down",
+          "target": "catwalk"
+        }
+      ],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     },
     "spire": {
       "name": "Signal Spire",
-      "neighbors": {"up": "lattice", "left": "forge", "down": "zenith"},
-      "platforms": [[0, 560, 960, 20], [220, 500, 120, 14], [420, 440, 120, 14], [620, 380, 120, 14]],
-      "collectibles": [[245, 470], [645, 350]],
-      "enemies": [{"path": [[50, 540], [900, 540]], "speed": 100}]
+      "neighbors": {
+        "up": "lattice",
+        "left": "forge",
+        "down": "zenith"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          220,
+          500,
+          120,
+          14
+        ],
+        [
+          420,
+          440,
+          120,
+          14
+        ],
+        [
+          620,
+          380,
+          120,
+          14
+        ]
+      ],
+      "collectibles": [
+        [
+          245,
+          470
+        ],
+        [
+          645,
+          350
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              50,
+              540
+            ],
+            [
+              900,
+              540
+            ]
+          ],
+          "speed": 100
+        }
+      ],
+      "stairs": [
+        {
+          "rect": [
+            44,
+            0,
+            34,
+            560
+          ],
+          "direction": "up",
+          "target": "lattice"
+        },
+        {
+          "rect": [
+            882,
+            0,
+            34,
+            560
+          ],
+          "direction": "down",
+          "target": "zenith"
+        }
+      ],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     },
     "catwalk": {
       "name": "Endless Catwalk",
-      "neighbors": {"up": "forge", "right": "zenith"},
-      "platforms": [[0, 560, 960, 20], [100, 510, 200, 12], [390, 470, 200, 12], [680, 430, 200, 12]],
-      "collectibles": [[130, 480], [710, 400]],
-      "enemies": [{"path": [[390, 450], [580, 450]], "speed": 95}]
+      "neighbors": {
+        "up": "forge",
+        "right": "zenith"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          100,
+          510,
+          200,
+          12
+        ],
+        [
+          390,
+          470,
+          200,
+          12
+        ],
+        [
+          680,
+          430,
+          200,
+          12
+        ]
+      ],
+      "collectibles": [
+        [
+          130,
+          480
+        ],
+        [
+          710,
+          400
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              390,
+              450
+            ],
+            [
+              580,
+              450
+            ]
+          ],
+          "speed": 95
+        }
+      ],
+      "stairs": [
+        {
+          "rect": [
+            44,
+            0,
+            34,
+            560
+          ],
+          "direction": "up",
+          "target": "forge"
+        }
+      ],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     },
     "zenith": {
       "name": "Zenith Observatory",
-      "neighbors": {"up": "spire", "left": "catwalk", "right": "throne"},
-      "platforms": [[0, 560, 960, 20], [100, 500, 120, 14], [290, 450, 120, 14], [480, 400, 120, 14], [670, 350, 120, 14]],
-      "collectibles": [[500, 370], [700, 320]],
-      "enemies": [{"path": [[100, 540], [870, 540]], "speed": 130}]
+      "neighbors": {
+        "up": "spire",
+        "left": "catwalk",
+        "right": "throne"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          100,
+          500,
+          120,
+          14
+        ],
+        [
+          290,
+          450,
+          120,
+          14
+        ],
+        [
+          480,
+          400,
+          120,
+          14
+        ],
+        [
+          670,
+          350,
+          120,
+          14
+        ]
+      ],
+      "collectibles": [
+        [
+          500,
+          370
+        ],
+        [
+          700,
+          320
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              100,
+              540
+            ],
+            [
+              870,
+              540
+            ]
+          ],
+          "speed": 130
+        }
+      ],
+      "stairs": [
+        {
+          "rect": [
+            44,
+            0,
+            34,
+            560
+          ],
+          "direction": "up",
+          "target": "spire"
+        }
+      ],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     },
     "throne": {
       "name": "Moonlit Throne",
-      "neighbors": {"left": "zenith"},
-      "platforms": [[0, 560, 960, 20], [250, 500, 460, 14], [390, 440, 180, 14]],
-      "collectibles": [[470, 410]],
-      "enemies": [{"path": [[260, 480], [700, 480]], "speed": 140}]
+      "neighbors": {
+        "left": "zenith"
+      },
+      "platforms": [
+        [
+          0,
+          560,
+          960,
+          20
+        ],
+        [
+          250,
+          500,
+          460,
+          14
+        ],
+        [
+          390,
+          440,
+          180,
+          14
+        ]
+      ],
+      "collectibles": [
+        [
+          470,
+          410
+        ]
+      ],
+      "enemies": [
+        {
+          "path": [
+            [
+              260,
+              480
+            ],
+            [
+              700,
+              480
+            ]
+          ],
+          "speed": 140
+        }
+      ],
+      "stairs": [],
+      "walls": [
+        [
+          250,
+          530,
+          26,
+          30
+        ],
+        [
+          680,
+          530,
+          26,
+          30
+        ]
+      ]
     }
   }
 }

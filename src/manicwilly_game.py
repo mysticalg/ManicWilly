@@ -24,6 +24,13 @@ class Collectible:
     taken: bool = False
 
 
+@dataclass
+class Stair:
+    rect: pygame.Rect
+    target: str | None = None
+    direction: str | None = None
+
+
 class Enemy:
     def __init__(self, points: list[list[float]], speed: float):
         self.points = [pygame.Vector2(p) for p in points]
@@ -51,8 +58,9 @@ class Player:
         self.rect = pygame.Rect(40, HEIGHT - 90, 34, 46)
         self.vel_y = 0.0
         self.on_ground = False
+        self.on_stairs = False
 
-    def update(self, dt: float, platforms: list[pygame.Rect], keys) -> None:
+    def update(self, dt: float, platforms: list[pygame.Rect], walls: list[pygame.Rect], stairs: list[Stair], keys) -> None:
         dx = 0
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             dx -= PLAYER_SPEED * dt
@@ -60,20 +68,49 @@ class Player:
             dx += PLAYER_SPEED * dt
         self.rect.x += int(dx)
 
-        self.vel_y += GRAVITY * dt
-        self.rect.y += int(self.vel_y * dt)
+        for wall in walls:
+            if self.rect.colliderect(wall):
+                if dx > 0:
+                    self.rect.right = wall.left
+                elif dx < 0:
+                    self.rect.left = wall.right
+
+        self.on_stairs = any(self.rect.colliderect(stair.rect) for stair in stairs)
+        climbing = self.on_stairs and (keys[pygame.K_UP] or keys[pygame.K_w] or keys[pygame.K_DOWN] or keys[pygame.K_s])
+
+        if climbing:
+            self.vel_y = 0
+            climb_speed = PLAYER_SPEED * 0.65
+            if keys[pygame.K_UP] or keys[pygame.K_w]:
+                self.rect.y -= int(climb_speed * dt)
+            if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+                self.rect.y += int(climb_speed * dt)
+        else:
+            self.vel_y += GRAVITY * dt
+            self.rect.y += int(self.vel_y * dt)
+
         self.on_ground = False
         for p in platforms:
             if self.rect.colliderect(p) and self.vel_y >= 0 and self.rect.bottom - p.top < 28:
                 self.rect.bottom = p.top
                 self.vel_y = 0
                 self.on_ground = True
+        for wall in walls:
+            if self.rect.colliderect(wall):
+                if self.vel_y >= 0:
+                    self.rect.bottom = wall.top
+                    self.vel_y = 0
+                    self.on_ground = True
+                else:
+                    self.rect.top = wall.bottom
+                    self.vel_y = 0
 
         self.rect.x = max(0, min(WIDTH - self.rect.width, self.rect.x))
         if self.rect.bottom > HEIGHT - 20:
             self.rect.bottom = HEIGHT - 20
             self.vel_y = 0
             self.on_ground = True
+        self.rect.top = max(0, self.rect.top)
 
     def jump(self):
         if self.on_ground:
@@ -96,9 +133,38 @@ def save_high_scores(scores: list[dict]) -> None:
 
 def build_room(room_cfg: dict):
     platforms = [pygame.Rect(*p) for p in room_cfg["platforms"]]
+    walls = [pygame.Rect(*w) for w in room_cfg.get("walls", [])]
+    stairs = [Stair(pygame.Rect(*s["rect"]), s.get("target"), s.get("direction")) for s in room_cfg.get("stairs", [])]
     items = [Collectible(pygame.Vector2(c)) for c in room_cfg["collectibles"]]
     enemies = [Enemy(e["path"], e["speed"]) for e in room_cfg["enemies"]]
-    return platforms, items, enemies
+    return platforms, walls, stairs, items, enemies
+
+
+def draw_stair(screen: pygame.Surface, stair: Stair) -> None:
+    pygame.draw.rect(screen, (140, 90, 50), stair.rect, border_radius=4)
+    rung_color = (220, 180, 130)
+    for y in range(stair.rect.top + 6, stair.rect.bottom, 10):
+        pygame.draw.line(screen, rung_color, (stair.rect.left + 3, y), (stair.rect.right - 3, y), 2)
+
+
+def draw_player(screen: pygame.Surface, player_rect: pygame.Rect, t: float) -> None:
+    pygame.draw.rect(screen, (90, 170, 255), player_rect, border_radius=8)
+    head = pygame.Rect(player_rect.x + 7, player_rect.y + 4, 20, 16)
+    pygame.draw.ellipse(screen, (248, 222, 190), head)
+    eye_y = head.y + 6
+    pygame.draw.circle(screen, (40, 40, 40), (head.x + 6, eye_y), 2)
+    pygame.draw.circle(screen, (40, 40, 40), (head.x + 14, eye_y), 2)
+    step = abs(math.sin(t * 10))
+    pygame.draw.rect(screen, (250, 220, 110), (player_rect.x + 4, player_rect.bottom - 8, 10, 6 + int(step * 3)), border_radius=2)
+    pygame.draw.rect(screen, (250, 220, 110), (player_rect.right - 14, player_rect.bottom - 8, 10, 6 + int((1 - step) * 3)), border_radius=2)
+
+
+def draw_enemy(screen: pygame.Surface, rect: pygame.Rect, t: float) -> None:
+    pulse = int(120 + 80 * math.sin(t * 8))
+    pygame.draw.ellipse(screen, (220, pulse, 120), rect)
+    pygame.draw.circle(screen, (30, 30, 30), (rect.centerx - 6, rect.centery - 3), 3)
+    pygame.draw.circle(screen, (30, 30, 30), (rect.centerx + 6, rect.centery - 3), 3)
+    pygame.draw.arc(screen, (30, 30, 30), (rect.x + 8, rect.y + 11, rect.width - 16, rect.height - 12), math.pi * 0.1, math.pi * 0.9, 2)
 
 
 def draw_background(screen: pygame.Surface, t: float):
@@ -168,10 +234,10 @@ def main() -> None:
         elif state == "playing":
             if room_id not in room_state:
                 room_state[room_id] = build_room(rooms[room_id])
-            platforms, items, enemies = room_state[room_id]
+            platforms, walls, stairs, items, enemies = room_state[room_id]
 
             keys = pygame.key.get_pressed()
-            player.update(dt, platforms, keys)
+            player.update(dt, platforms, walls, stairs, keys)
 
             for enemy in enemies:
                 enemy.update(dt)
@@ -191,23 +257,30 @@ def main() -> None:
             elif player.rect.right >= WIDTH and "right" in neighbors:
                 room_id = neighbors["right"]
                 player.rect.left = 4
-            elif player.rect.top <= 0 and "up" in neighbors:
-                room_id = neighbors["up"]
-                player.rect.bottom = HEIGHT - 24
-            elif player.rect.bottom >= HEIGHT - 20 and "down" in neighbors and player.rect.centerx > WIDTH - 120:
-                room_id = neighbors["down"]
-                player.rect.top = 24
+            else:
+                for stair in stairs:
+                    if stair.target and stair.direction == "up" and player.rect.colliderect(stair.rect) and player.rect.top <= 0:
+                        room_id = stair.target
+                        player.rect.bottom = HEIGHT - 30
+                        break
+                    if stair.target and stair.direction == "down" and player.rect.colliderect(stair.rect) and player.rect.bottom >= HEIGHT - 20:
+                        room_id = stair.target
+                        player.rect.top = 20
+                        break
 
             for p in platforms:
                 pygame.draw.rect(screen, (120, 220, 230), p, border_radius=6)
+            for w in walls:
+                pygame.draw.rect(screen, (95, 125, 165), w, border_radius=5)
+            for stair in stairs:
+                draw_stair(screen, stair)
             for item in items:
                 if not item.taken:
                     pygame.draw.circle(screen, (250, 220, 80), item.pos, 10)
             for enemy in enemies:
-                pulse = int(80 + 60 * math.sin(t * 8))
-                pygame.draw.rect(screen, (220, pulse, 140), enemy.rect(), border_radius=8)
+                draw_enemy(screen, enemy.rect(), t)
 
-            pygame.draw.rect(screen, (140, 240, 170), player.rect, border_radius=8)
+            draw_player(screen, player.rect, t)
 
             room_text = tiny.render(f"{rooms[room_id]['name']}", True, (230, 230, 255))
             hud = tiny.render(f"Items: {collected}/{total_items}   Time: {elapsed:0.1f}s", True, (255, 255, 255))
