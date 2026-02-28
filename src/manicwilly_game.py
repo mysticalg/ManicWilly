@@ -97,6 +97,10 @@ class Player:
         if climbing:
             self.vel_y = 0
             climb_speed = PLAYER_SPEED * 0.65
+            active_stair = next((s for s in stairs if self.rect.colliderect(s.rect)), None)
+            if active_stair:
+                center_x = active_stair.rect.centerx - self.rect.width // 2
+                self.pos.x += (center_x - self.pos.x) * min(1.0, dt * 18)
             if keys[pygame.K_UP] or keys[pygame.K_w]:
                 self.pos.y -= climb_speed * dt
             if keys[pygame.K_DOWN] or keys[pygame.K_s]:
@@ -313,9 +317,13 @@ def main() -> None:
             if player.rect.left <= 0 and "left" in neighbors:
                 room_id = neighbors["left"]
                 player.rect.right = WIDTH - 4
+                player.pos.update(player.rect.topleft)
+                stair_transition_cooldown = 0.15
             elif player.rect.right >= WIDTH and "right" in neighbors:
                 room_id = neighbors["right"]
                 player.rect.left = 4
+                player.pos.update(player.rect.topleft)
+                stair_transition_cooldown = 0.15
             else:
                 for stair in stairs:
                     if (
@@ -329,6 +337,7 @@ def main() -> None:
                         player.rect.bottom = HEIGHT - 28
                         player.rect.x = 54
                         player.pos.update(player.rect.topleft)
+                        player.vel_y = 0
                         stair_transition_cooldown = 0.22
                         break
                     if (
@@ -342,6 +351,7 @@ def main() -> None:
                         player.rect.bottom = HEIGHT - 28
                         player.rect.x = WIDTH - 98
                         player.pos.update(player.rect.topleft)
+                        player.vel_y = 0
                         stair_transition_cooldown = 0.22
                         break
 

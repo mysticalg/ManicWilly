@@ -9,6 +9,7 @@ from validate_levels import (
     simulate_full_clear,
     validate_graph,
     validate_stairs,
+    validate_vertical_connectivity_coverage,
     validate_unique_room_layouts,
 )
 
@@ -44,4 +45,10 @@ def test_all_levels_are_traversable_and_game_is_completable():
 def test_every_room_has_a_unique_layout_puzzle():
     payload = load_rooms()
     valid, msg = validate_unique_room_layouts(payload)
+    assert valid, msg
+
+
+def test_map_has_rooms_above_and_below():
+    payload = load_rooms()
+    valid, msg = validate_vertical_connectivity_coverage(payload)
     assert valid, msg

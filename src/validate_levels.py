@@ -131,6 +131,15 @@ def validate_unique_room_layouts(payload: dict) -> tuple[bool, str]:
     return True, "ok"
 
 
+def validate_vertical_connectivity_coverage(payload: dict) -> tuple[bool, str]:
+    rooms = payload["rooms"]
+    up_count = sum(1 for room in rooms.values() if "up" in room["neighbors"])
+    down_count = sum(1 for room in rooms.values() if "down" in room["neighbors"])
+    if up_count == 0 or down_count == 0:
+        return False, "map missing vertical links"
+    return True, "ok"
+
+
 if __name__ == "__main__":
     data = load_rooms()
     valid, msg = validate_graph(data)
@@ -143,6 +152,9 @@ if __name__ == "__main__":
     if not valid:
         raise SystemExit(msg)
     valid, msg = validate_unique_room_layouts(data)
+    if not valid:
+        raise SystemExit(msg)
+    valid, msg = validate_vertical_connectivity_coverage(data)
     if not valid:
         raise SystemExit(msg)
     print(f"rooms={len(data['rooms'])} collectibles={count_collectibles(data)} status=ok")
