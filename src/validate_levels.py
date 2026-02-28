@@ -62,12 +62,69 @@ def validate_stairs(payload: dict) -> tuple[bool, str]:
     return True, "ok"
 
 
+def simulate_full_clear(payload: dict) -> tuple[bool, str]:
+    """Simulate a rules-based full clear across all rooms.
+
+    This does not run pygame physics; it validates that traversal rules exposed
+    by the data permit visiting every room and collecting every room item.
+    """
+
+    rooms = payload["rooms"]
+    start = payload["start_room"]
+    if start not in rooms:
+        return False, "start_room missing"
+
+    def stair_target(room: dict, direction: str) -> str | None:
+        for stair in room.get("stairs", []):
+            if stair.get("direction") == direction:
+                return stair.get("target")
+        return None
+
+    visited: set[str] = set()
+    collected = 0
+    stack = [start]
+    while stack:
+        rid = stack.pop()
+        if rid in visited:
+            continue
+        visited.add(rid)
+        room = rooms[rid]
+        collected += len(room["collectibles"])
+
+        neighbors = room["neighbors"]
+        for direction in ("left", "right"):
+            nxt = neighbors.get(direction)
+            if nxt and nxt not in visited:
+                stack.append(nxt)
+
+        for direction in ("up", "down"):
+            nxt = neighbors.get(direction)
+            if not nxt:
+                continue
+            if stair_target(room, direction) != nxt:
+                return False, f"room {rid} cannot traverse {direction} to {nxt}"
+            if nxt not in visited:
+                stack.append(nxt)
+
+    if len(visited) != len(rooms):
+        return False, f"full-clear traversal reached {len(visited)} / {len(rooms)} rooms"
+
+    expected = count_collectibles(payload)
+    if collected != expected:
+        return False, f"full-clear collected {collected} / {expected} items"
+
+    return True, "ok"
+
+
 if __name__ == "__main__":
     data = load_rooms()
     valid, msg = validate_graph(data)
     if not valid:
         raise SystemExit(msg)
     valid, msg = validate_stairs(data)
+    if not valid:
+        raise SystemExit(msg)
+    valid, msg = simulate_full_clear(data)
     if not valid:
         raise SystemExit(msg)
     print(f"rooms={len(data['rooms'])} collectibles={count_collectibles(data)} status=ok")
