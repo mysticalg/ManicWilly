@@ -62,6 +62,7 @@ class Player:
         self.on_stairs = False
         self.coyote_timer = 0.0
         self.jump_buffer_timer = 0.0
+        self.facing = 1
 
     def request_jump(self):
         self.jump_buffer_timer = 0.14
@@ -71,8 +72,10 @@ class Player:
         dx = 0
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             dx -= PLAYER_SPEED * dt
+            self.facing = -1
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             dx += PLAYER_SPEED * dt
+            self.facing = 1
         self.pos.x += dx
         self.rect.x = int(round(self.pos.x))
 
@@ -147,42 +150,99 @@ class Player:
 
 class SpriteBank:
     def __init__(self):
-        self.player = self._make_player_sprite()
-        self.enemy = self._make_enemy_sprite()
-        self.collectible = self._make_collectible_sprite()
+        self.player_walk = self._make_player_walk_frames()
+        self.player_climb = self._make_player_climb_frames()
+        self.player_jump = self._make_player_jump_frame()
+        self.enemy_walk = self._make_enemy_walk_frames()
+        self.collectible = self._make_collectible_frames()
 
     @staticmethod
-    def _make_player_sprite() -> pygame.Surface:
+    def _make_player_walk_frames() -> list[pygame.Surface]:
+        frames = []
+        for step in (0, 1, 2, 1):
+            surf = pygame.Surface((34, 46), pygame.SRCALPHA)
+            pygame.draw.rect(surf, (17, 17, 24), (6, 2, 22, 42), width=2, border_radius=4)
+            pygame.draw.rect(surf, (58, 124, 235), (9, 19, 16, 17), border_radius=2)
+            pygame.draw.rect(surf, (250, 230, 90), (8, 17, 18, 3), border_radius=1)
+            pygame.draw.ellipse(surf, (247, 214, 170), (11, 5, 12, 11))
+            pygame.draw.rect(surf, (25, 25, 30), (14, 10, 2, 2))
+            pygame.draw.rect(surf, (25, 25, 30), (18, 10, 2, 2))
+            left_leg = 36 + (2 if step in (0, 2) else 0)
+            right_leg = 36 + (2 if step == 1 else 0)
+            pygame.draw.rect(surf, (235, 225, 160), (10, left_leg, 5, 7), border_radius=1)
+            pygame.draw.rect(surf, (235, 225, 160), (19, right_leg, 5, 7), border_radius=1)
+            frames.append(surf)
+        return frames
+
+    @staticmethod
+    def _make_player_climb_frames() -> list[pygame.Surface]:
+        frames = []
+        for arm_up in (True, False):
+            surf = pygame.Surface((34, 46), pygame.SRCALPHA)
+            pygame.draw.rect(surf, (17, 17, 24), (6, 2, 22, 42), width=2, border_radius=4)
+            pygame.draw.rect(surf, (58, 124, 235), (9, 19, 16, 17), border_radius=2)
+            pygame.draw.ellipse(surf, (247, 214, 170), (11, 5, 12, 11))
+            pygame.draw.rect(surf, (235, 225, 160), (10, 36, 5, 7), border_radius=1)
+            pygame.draw.rect(surf, (235, 225, 160), (19, 36, 5, 7), border_radius=1)
+            if arm_up:
+                pygame.draw.rect(surf, (247, 214, 170), (7, 15, 3, 7), border_radius=1)
+                pygame.draw.rect(surf, (247, 214, 170), (24, 22, 3, 7), border_radius=1)
+            else:
+                pygame.draw.rect(surf, (247, 214, 170), (7, 22, 3, 7), border_radius=1)
+                pygame.draw.rect(surf, (247, 214, 170), (24, 15, 3, 7), border_radius=1)
+            frames.append(surf)
+        return frames
+
+    @staticmethod
+    def _make_player_jump_frame() -> pygame.Surface:
         surf = pygame.Surface((34, 46), pygame.SRCALPHA)
-        pygame.draw.rect(surf, (22, 24, 38), (4, 1, 26, 44), width=2, border_radius=4)
-        pygame.draw.rect(surf, (66, 110, 220), (7, 18, 20, 20), border_radius=3)
-        pygame.draw.ellipse(surf, (244, 214, 175), (10, 4, 14, 12))
-        pygame.draw.rect(surf, (215, 60, 70), (9, 16, 16, 5), border_radius=2)
-        pygame.draw.rect(surf, (230, 220, 145), (8, 38, 8, 6), border_radius=2)
-        pygame.draw.rect(surf, (230, 220, 145), (18, 38, 8, 6), border_radius=2)
-        pygame.draw.circle(surf, (18, 18, 22), (14, 10), 1)
-        pygame.draw.circle(surf, (18, 18, 22), (20, 10), 1)
+        pygame.draw.rect(surf, (17, 17, 24), (6, 2, 22, 42), width=2, border_radius=4)
+        pygame.draw.rect(surf, (58, 124, 235), (9, 18, 16, 16), border_radius=2)
+        pygame.draw.ellipse(surf, (247, 214, 170), (11, 5, 12, 11))
+        pygame.draw.rect(surf, (247, 214, 170), (7, 20, 3, 6), border_radius=1)
+        pygame.draw.rect(surf, (247, 214, 170), (24, 20, 3, 6), border_radius=1)
+        pygame.draw.rect(surf, (235, 225, 160), (11, 34, 5, 6), border_radius=1)
+        pygame.draw.rect(surf, (235, 225, 160), (18, 34, 5, 6), border_radius=1)
         return surf
 
     @staticmethod
-    def _make_enemy_sprite() -> pygame.Surface:
-        surf = pygame.Surface((36, 36), pygame.SRCALPHA)
-        pygame.draw.ellipse(surf, (70, 225, 170), (2, 5, 32, 22))
-        pygame.draw.rect(surf, (18, 24, 30), (2, 5, 32, 22), width=2, border_radius=8)
-        pygame.draw.rect(surf, (245, 245, 250), (9, 12, 6, 6), border_radius=2)
-        pygame.draw.rect(surf, (245, 245, 250), (21, 12, 6, 6), border_radius=2)
-        pygame.draw.rect(surf, (20, 20, 20), (11, 14, 2, 2))
-        pygame.draw.rect(surf, (20, 20, 20), (23, 14, 2, 2))
-        pygame.draw.rect(surf, (220, 120, 80), (11, 23, 14, 3), border_radius=2)
-        return surf
+    def _make_enemy_walk_frames() -> list[pygame.Surface]:
+        frames = []
+        for phase in (0, 1, 2, 1):
+            surf = pygame.Surface((36, 36), pygame.SRCALPHA)
+            pygame.draw.rect(surf, (28, 32, 40), (4, 7, 28, 18), border_radius=4)
+            pygame.draw.rect(surf, (109, 236, 168), (6, 9, 24, 14), border_radius=3)
+            pygame.draw.rect(surf, (245, 245, 250), (10, 13, 5, 5), border_radius=1)
+            pygame.draw.rect(surf, (245, 245, 250), (21, 13, 5, 5), border_radius=1)
+            pygame.draw.rect(surf, (20, 20, 20), (12, 15, 2, 2))
+            pygame.draw.rect(surf, (20, 20, 20), (23, 15, 2, 2))
+            l = 26 + (phase % 2)
+            r = 26 + ((phase + 1) % 2)
+            pygame.draw.rect(surf, (228, 112, 78), (10, l, 4, 7), border_radius=1)
+            pygame.draw.rect(surf, (228, 112, 78), (22, r, 4, 7), border_radius=1)
+            frames.append(surf)
+        return frames
 
     @staticmethod
-    def _make_collectible_sprite() -> pygame.Surface:
-        surf = pygame.Surface((20, 20), pygame.SRCALPHA)
-        points = [(10, 0), (14, 6), (20, 10), (14, 14), (10, 20), (6, 14), (0, 10), (6, 6)]
-        pygame.draw.polygon(surf, (255, 221, 85), points)
-        pygame.draw.polygon(surf, (255, 246, 185), points, width=2)
-        return surf
+    def _make_collectible_frames() -> list[pygame.Surface]:
+        frames = []
+        for size in (8, 9, 10, 9):
+            surf = pygame.Surface((20, 20), pygame.SRCALPHA)
+            center = 10
+            points = [
+                (center, center - size),
+                (center + size // 2, center - size // 2),
+                (center + size, center),
+                (center + size // 2, center + size // 2),
+                (center, center + size),
+                (center - size // 2, center + size // 2),
+                (center - size, center),
+                (center - size // 2, center - size // 2),
+            ]
+            pygame.draw.polygon(surf, (255, 228, 95), points)
+            pygame.draw.polygon(surf, (255, 249, 200), points, width=1)
+            frames.append(surf)
+        return frames
 
 
 def load_data() -> dict:
@@ -216,14 +276,13 @@ def draw_stair(screen: pygame.Surface, stair: Stair) -> None:
         pygame.draw.line(screen, rung_color, (stair.rect.left + 3, y), (stair.rect.right - 3, y), 2)
 
 
-def draw_player(screen: pygame.Surface, sprites: SpriteBank, player_rect: pygame.Rect, t: float) -> None:
-    bob = int(abs(math.sin(t * 7)) * 2)
-    screen.blit(sprites.player, (player_rect.x, player_rect.y + bob))
+def draw_player(screen: pygame.Surface, frame: pygame.Surface, player_rect: pygame.Rect) -> None:
+    screen.blit(frame, player_rect.topleft)
 
 
-def draw_enemy(screen: pygame.Surface, sprites: SpriteBank, rect: pygame.Rect, t: float) -> None:
-    wobble = int(math.sin(t * 6 + rect.x * 0.03) * 2)
-    screen.blit(sprites.enemy, (rect.x, rect.y + wobble))
+def draw_enemy(screen: pygame.Surface, sprites: SpriteBank, rect: pygame.Rect, t: float, enemy: Enemy) -> None:
+    frame = sprites.enemy_walk[int((t * 8 + enemy.pos.x * 0.02)) % len(sprites.enemy_walk)]
+    screen.blit(frame, (rect.x, rect.y))
 
 
 def draw_background(screen: pygame.Surface, t: float):
@@ -361,13 +420,23 @@ def main() -> None:
                 pygame.draw.rect(screen, (95, 125, 165), w, border_radius=5)
             for stair in stairs:
                 draw_stair(screen, stair)
+            item_frame = sprites.collectible[int(t * 9) % len(sprites.collectible)]
             for item in items:
                 if not item.taken:
-                    screen.blit(sprites.collectible, (item.pos.x - 10, item.pos.y - 10))
+                    screen.blit(item_frame, (item.pos.x - 10, item.pos.y - 10))
             for enemy in enemies:
-                draw_enemy(screen, sprites, enemy.rect(), t)
+                draw_enemy(screen, sprites, enemy.rect(), t, enemy)
 
-            draw_player(screen, sprites, player.rect, t)
+            if player.on_stairs:
+                frame = sprites.player_climb[int(t * 8) % len(sprites.player_climb)]
+            elif not player.on_ground:
+                frame = sprites.player_jump
+            else:
+                frame = sprites.player_walk[int(t * 10) % len(sprites.player_walk)]
+
+            if player.facing < 0:
+                frame = pygame.transform.flip(frame, True, False)
+            draw_player(screen, frame, player.rect)
 
             room_text = tiny.render(f"{rooms[room_id]['name']}", True, (230, 230, 255))
             hud = tiny.render(f"Items: {collected}/{total_items}   Time: {elapsed:0.1f}s", True, (255, 255, 255))
