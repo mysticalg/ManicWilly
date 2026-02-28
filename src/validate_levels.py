@@ -116,6 +116,21 @@ def simulate_full_clear(payload: dict) -> tuple[bool, str]:
     return True, "ok"
 
 
+def validate_unique_room_layouts(payload: dict) -> tuple[bool, str]:
+    rooms = payload["rooms"]
+    seen: dict[tuple, str] = {}
+    for rid, room in rooms.items():
+        signature = (
+            tuple(tuple(p) for p in room.get("platforms", [])),
+            tuple(tuple(w) for w in room.get("walls", [])),
+            tuple((s.get("direction"), tuple(s.get("rect", []))) for s in room.get("stairs", [])),
+        )
+        if signature in seen:
+            return False, f"rooms {seen[signature]} and {rid} share identical layout"
+        seen[signature] = rid
+    return True, "ok"
+
+
 if __name__ == "__main__":
     data = load_rooms()
     valid, msg = validate_graph(data)
@@ -125,6 +140,9 @@ if __name__ == "__main__":
     if not valid:
         raise SystemExit(msg)
     valid, msg = simulate_full_clear(data)
+    if not valid:
+        raise SystemExit(msg)
+    valid, msg = validate_unique_room_layouts(data)
     if not valid:
         raise SystemExit(msg)
     print(f"rooms={len(data['rooms'])} collectibles={count_collectibles(data)} status=ok")
