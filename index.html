@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ManicWilly</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Courier New', monospace;
+    color: #fff;
+    overflow: hidden;
+  }
+  #gameCanvas {
+    display: block;
+    image-rendering: pixelated;
+    border: 4px solid #fff;
+  }
+  #info {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #aaa;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<div id="info">ARROW KEYS / WASD: MOVE &nbsp;|&nbsp; SPACE / UP: JUMP &nbsp;|&nbsp; UP/DOWN ON STAIRS: CLIMB</div>
+<script>
+'use strict';
+// ─── ZX Spectrum palette ───────────────────────────────────────────────────
+const ZX = {
+  BLACK:   '#000000', BLUE:    '#0000CD', RED:     '#CD0000',
+  MAGENTA: '#CD00CD', GREEN:   '#00CD00', CYAN:    '#00CDCD',
+  YELLOW:  '#CDCD00', WHITE:   '#CDCDCD',
+  BBLACK:  '#000000', BBLUE:   '#0000FF', BRED:    '#FF0000',
+  BMAGENTA:'#FF00FF', BGREEN:  '#00FF00', BCYAN:   '#00FFFF',
+  BYELLOW: '#FFFF00', BWHITE:  '#FFFFFF',
+};
+
+// ─── Canvas setup ─────────────────────────────────────────────────────────
+const NATIVE_W = 256, NATIVE_H = 192; // ZX Spectrum resolution
+const SCALE    = 3;
+const W = NATIVE_W * SCALE;
+const H = NATIVE_H * SCALE;
+const canvas = document.getElementById('gameCanvas');
+canvas.width  = W;
+canvas.height = H;
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+// ─── Off-screen native buffer ──────────────────────────────────────────────
+const buf    = document.createElement('canvas');
+buf.width    = NATIVE_W;
+buf.height   = NATIVE_H;
+const g      = buf.getContext('2d');
+g.imageSmoothingEnabled = false;
+
+// ─── Game constants ────────────────────────────────────────────────────────
+const GRAVITY     = 1400;
+const JUMP_SPEED  = 420;
+const WALK_SPEED  = 90;
+const CLIMB_SPEED = 60;
+const CELL        = 8;        // ZX Spectrum attribute cell size (native px)
+const PLAT_H      = 4;        // platform thickness in native pixels
+const LIVES_MAX   = 5;
+
+// ─── Sprite pixel art (16×16 in native pixels) ────────────────────────────
+// Each row of 16 bits stored as hex number, drawn left-to-right MSB first.
+// Willy sprite — standing/walking frames (colours: body=cyan, skin=yellow, hair=white)
+const WILLY_FRAMES = [
+  // frame 0
+  [0x0FC0,0x0FC0,0x3FF0,0x6DB6,0xFFFF,0xEDBE,0xEDBE,0x3FF0,
+   0x0FC0,0x1FE0,0x3FF0,0x3FF0,0x3CF0,0x3CF0,0x0C00,0x0C00],
+  // frame 1 (walking: legs shifted)
+  [0x0FC0,0x0FC0,0x3FF0,0x6DB6,0xFFFF,0xEDBE,0xEDBE,0x3FF0,
+   0x0FC0,0x1FE0,0x3FF0,0x3FF0,0x03C0,0x3C00,0x03C0,0x3C00],
+];
+
+// Willy colors per row (0=bg, 1=body, 2=skin/hair, 3=belt)
+const WILLY_COLORS = [
+  ZX.BWHITE, ZX.BWHITE, ZX.BCYAN, ZX.BYELLOW,
+  ZX.BCYAN,  ZX.BYELLOW, ZX.BYELLOW, ZX.BCYAN,
+  ZX.BCYAN,  ZX.BBLUE,   ZX.BBLUE,  ZX.BBLUE,
+  ZX.BBLUE,  ZX.BBLUE,   ZX.BRED,   ZX.BRED,
+];
+
+// Guardian sprite (enemy) — a robot/ghost 16x16
+const GUARD_FRAMES = [
+  [0x3C00,0x7E00,0xDB00,0xFF00,0x9900,0xFF00,0x6600,0x3C00,
+   0x1800,0x3C00,0x2400,0x2400,0x6600,0x6600,0x4200,0x4200],
+  [0x03C0,0x07E0,0x0DB0,0x0FF0,0x0990,0x0FF0,0x0660,0x03C0,
+   0x0180,0x03C0,0x0240,0x0240,0x0660,0x0660,0x0420,0x0420],
+];
+const GUARD_COLORS = [
+  ZX.BGREEN, ZX.BGREEN, ZX.BYELLOW,ZX.BGREEN,
+  ZX.BYELLOW,ZX.BGREEN, ZX.BGREEN, ZX.BGREEN,
+  ZX.BRED,   ZX.BRED,   ZX.BRED,   ZX.BRED,
+  ZX.BRED,   ZX.BRED,   ZX.BRED,   ZX.BRED,
+];
+
+// Collectible (flashing gem) 8×8
+const GEM_FRAMES = [
+  [0x18,0x3C,0x7E,0xFF,0xFF,0x7E,0x3C,0x18],
+  [0x00,0x18,0x3C,0x7E,0x7E,0x3C,0x18,0x00],
+];
+
+function drawSprite16(gctx, rows, colors, x, y, flipX) {
+  for (let r = 0; r < 16; r++) {
+    const bits = rows[r];
+    const col  = colors[r];
+    for (let c = 0; c < 16; c++) {
+      const bit = flipX ? ((bits >> c) & 1) : ((bits >> (15 - c)) & 1);
+      if (bit) {
+        gctx.fillStyle = col;
+        gctx.fillRect(x + c, y + r, 1, 1);
+      }
+    }
+  }
+}
+
+function drawSprite8(gctx, rows, color, x, y) {
+  for (let r = 0; r < 8; r++) {
+    const bits = rows[r];
+    for (let c = 0; c < 8; c++) {
+      if ((bits >> (7 - c)) & 1) {
+        gctx.fillStyle = color;
+        gctx.fillRect(x + c, y + r, 1, 1);
+      }
+    }
+  }
+}
+
+// ─── Room data (native 256×192 coords) ────────────────────────────────────
+// Platforms: [x, y, w, h]  (all native pixels)
+// Enemies: { px (patrol left x), py, width (patrol range), speed (native px/s), flip }
+// Stairs: [x, y, w, h, dir, targetRoom, destX, destY]
+// Collectibles: [x, y]
+// neighbors: {left, right}  (room name strings for side transitions)
+const ROOMS = {
+  'The Bathroom': {
+    bg: ZX.BLACK, fg: ZX.BCYAN, fgAlt: ZX.BYELLOW,
+    platforms: [
+      [0, 184, 256, 4],   // floor
+      [0, 152, 48, 4],    // left ledge
+      [88, 152, 80, 4],
+      [208, 152, 48, 4],
+      [24, 120, 64, 4],
+      [136, 120, 88, 4],
+      [0, 88, 56, 4],
+      [96, 88, 72, 4],
+      [200, 88, 56, 4],
+      [32, 56, 48, 4],
+      [160, 56, 64, 4],
+      [80, 24, 96, 4],
+    ],
+    walls: [],
+    stairs: [
+      { rect:[236,108,8,76], dir:'down', target:'The Kitchen', destX:8, destY:155 },
+    ],
+    collectibles: [[52,144],[148,144],[28,112],[176,112],[104,80],[236,80],[88,16]],
+    enemies: [
+      { px:88, py:144, range:112, speed:40 },
+      { px:0,  py:80,  range:52,  speed:50 },
+      { px:136,py:112, range:80,  speed:55 },
+    ],
+    neighbors: { right: 'The Bedroom' },
+  },
+  'The Bedroom': {
+    bg: ZX.BBLUE, fg: ZX.BWHITE, fgAlt: ZX.BYELLOW,
+    platforms: [
+      [0, 184, 256, 4],
+      [0, 152, 72, 4],
+      [96, 152, 64, 4],
+      [192, 152, 64, 4],
+      [48, 120, 80, 4],
+      [160, 120, 80, 4],
+      [0, 88, 56, 4],
+      [104, 88, 48, 4],
+      [200, 88, 56, 4],
+      [32, 56, 192, 4],
+      [80, 24, 96, 4],
+    ],
+    walls: [
+      [120,152,8,32],
+    ],
+    stairs: [
+      { rect:[4,108,8,76], dir:'up', target:'The Bathroom', destX:220, destY:155 },
+      { rect:[244,108,8,76], dir:'down', target:'The Kitchen West', destX:8, destY:155 },
+    ],
+    collectibles: [[32,144],[144,144],[220,144],[80,112],[196,112],[8,80],[120,80],[216,80],[112,16]],
+    enemies: [
+      { px:0,  py:144, range:64,  speed:45 },
+      { px:48, py:112, range:88,  speed:55 },
+      { px:104,py:80,  range:88,  speed:60 },
+    ],
+    neighbors: { left: 'The Bathroom', right: 'The Ballroom' },
+  },
+  'The Ballroom': {
+    bg: ZX.BLACK, fg: ZX.BMAGENTA, fgAlt: ZX.BCYAN,
+    platforms: [
+      [0, 184, 256, 4],
+      [32, 160, 192, 4],
+      [0, 136, 64, 4],
+      [112, 136, 32, 4],
+      [192, 136, 64, 4],
+      [48, 112, 48, 4],
+      [160, 112, 48, 4],
+      [96, 88, 64, 4],
+      [0, 64, 80, 4],
+      [176, 64, 80, 4],
+      [64, 40, 128, 4],
+      [96, 16, 64, 4],
+    ],
+    walls: [
+      [0, 136, 4, 48],
+      [252,136, 4, 48],
+    ],
+    stairs: [
+      { rect:[4,108,8,76], dir:'up', target:'The Bedroom', destX:228, destY:155 },
+    ],
+    collectibles: [[48,152],[144,152],[112,128],[32,128],[200,128],[56,104],[168,104],[104,80],[8,56],[184,56],[80,32],[112,8]],
+    enemies: [
+      { px:32, py:152, range:160, speed:50 },
+      { px:0,  py:128, range:60,  speed:65 },
+      { px:96, py:80,  range:56,  speed:60 },
+      { px:64, py:32,  range:120, speed:70 },
+    ],
+    neighbors: { left: 'The Bedroom', right: 'The Wine Cellar' },
+  },
+  'The Wine Cellar': {
+    bg: ZX.BLACK, fg: ZX.BRED, fgAlt: ZX.BYELLOW,
+    platforms: [
+      [0, 184, 256, 4],
+      [0, 152, 80, 4],
+      [112, 152, 80, 4],
+      [0, 120, 40, 4],
+      [80, 120, 96, 4],
+      [208, 120, 48, 4],
+      [32, 88, 72, 4],
+      [144, 88, 72, 4],
+      [0, 56, 56, 4],
+      [104, 56, 48, 4],
+      [200, 56, 56, 4],
+      [48, 24, 160, 4],
+    ],
+    walls: [
+      [108,152,4,32],
+      [188,152,4,32],
+    ],
+    stairs: [
+      { rect:[4,108,8,76], dir:'up', target:'The Ballroom', destX:228, destY:155 },
+      { rect:[244,48,8,136], dir:'down', target:'The Crypt', destX:8, destY:155 },
+    ],
+    collectibles: [[40,144],[152,144],[8,112],[120,112],[220,112],[64,80],[168,80],[8,48],[120,48],[212,48],[80,16],[176,16]],
+    enemies: [
+      { px:0,  py:144, range:76,  speed:55 },
+      { px:112,py:144, range:76,  speed:55 },
+      { px:80, py:112, range:120, speed:65 },
+      { px:32, py:80,  range:104, speed:60 },
+      { px:48, py:16,  range:152, speed:75 },
+    ],
+    neighbors: { left: 'The Ballroom', right: 'The Crypt' },
+  },
+  'The Crypt': {
+    bg: ZX.BLACK, fg: ZX.BGREEN, fgAlt: ZX.BWHITE,
+    platforms: [
+      [0, 184, 256, 4],
+      [16, 160, 224, 4],
+      [0, 136, 48, 4],
+      [104, 136, 48, 4],
+      [208, 136, 48, 4],
+      [32, 112, 72, 4],
+      [152, 112, 72, 4],
+      [80, 88, 96, 4],
+      [0, 64, 64, 4],
+      [192, 64, 64, 4],
+      [48, 40, 160, 4],
+      [80, 16, 96, 4],
+    ],
+    walls: [
+      [0, 160, 4, 24],
+      [252,160, 4, 24],
+    ],
+    stairs: [
+      { rect:[4,108,8,76], dir:'up', target:'The Wine Cellar', destX:228, destY:155 },
+    ],
+    collectibles: [[32,152],[128,152],[224,152],[8,128],[128,128],[216,128],[56,104],[168,104],[96,80],[8,56],[200,56],[80,32],[128,8]],
+    enemies: [
+      { px:16, py:152, range:208, speed:50 },
+      { px:0,  py:128, range:44,  speed:70 },
+      { px:104,py:128, range:40,  speed:70 },
+      { px:80, py:80,  range:88,  speed:65 },
+      { px:48, py:32,  range:152, speed:80 },
+    ],
+    neighbors: { left: 'The Wine Cellar' },
+  },
+
+  // ── Lower row (from The Bathroom downward) ──
+  'The Kitchen': {
+    bg: ZX.BLACK, fg: ZX.BYELLOW, fgAlt: ZX.BWHITE,
+    platforms: [
+      [0, 184, 256, 4],
+      [0, 152, 96, 4],
+      [128, 152, 96, 4],
+      [48, 120, 72, 4],
+      [160, 120, 72, 4],
+      [0, 88, 48, 4],
+      [104, 88, 48, 4],
+      [208, 88, 48, 4],
+      [32, 56, 192, 4],
+      [80, 24, 96, 4],
+    ],
+    walls: [],
+    stairs: [
+      { rect:[244,108,8,76], dir:'up', target:'The Bathroom', destX:228, destY:155 },
+      { rect:[4,108,8,76], dir:'down', target:'The Cellar', destX:228, destY:155 },
+    ],
+    collectibles: [[48,144],[160,144],[80,112],[184,112],[8,80],[120,80],[216,80],[80,16],[176,16]],
+    enemies: [
+      { px:0,  py:144, range:92,  speed:50 },
+      { px:128,py:144, range:92,  speed:50 },
+      { px:48, py:112, range:104, speed:60 },
+      { px:32, py:48,  range:184, speed:65 },
+    ],
+    neighbors: { right: 'The Kitchen West' },
+  },
+  'The Kitchen West': {
+    bg: ZX.BBLUE, fg: ZX.BWHITE, fgAlt: ZX.BRED,
+    platforms: [
+      [0, 184, 256, 4],
+      [0, 152, 64, 4],
+      [96, 152, 64, 4],
+      [192, 152, 64, 4],
+      [32, 120, 80, 4],
+      [160, 120, 80, 4],
+      [0, 88, 112, 4],
+      [144, 88, 112, 4],
+      [64, 56, 128, 4],
+      [80, 24, 96, 4],
+    ],
+    walls: [
+      [120,152,8,32],
+    ],
+    stairs: [
+      { rect:[4,108,8,76], dir:'up', target:'The Bedroom', destX:228, destY:155 },
+      { rect:[244,108,8,76], dir:'down', target:'The Cellar', destX:8, destY:155 },
+    ],
+    collectibles: [[32,144],[144,144],[216,144],[64,112],[192,112],[8,80],[152,80],[96,48],[160,16]],
+    enemies: [
+      { px:0,  py:144, range:60,  speed:55 },
+      { px:32, py:112, range:120, speed:60 },
+      { px:0,  py:80,  range:108, speed:65 },
+    ],
+    neighbors: { left: 'The Kitchen', right: 'The Ballroom' },
+  },
+  'The Cellar': {
+    bg: ZX.BLACK, fg: ZX.BCYAN, fgAlt: ZX.BMAGENTA,
+    platforms: [
+      [0, 184, 256, 4],
+      [0, 160, 256, 4],
+      [0, 136, 56, 4],
+      [104, 136, 48, 4],
+      [200, 136, 56, 4],
+      [32, 112, 72, 4],
+      [152, 112, 72, 4],
+      [80, 88, 96, 4],
+      [0, 64, 48, 4],
+      [208, 64, 48, 4],
+      [96, 40, 64, 4],
+      [64, 16, 128, 4],
+    ],
+    walls: [],
+    stairs: [
+      { rect:[4,108,8,76], dir:'up', target:'The Kitchen', destX:228, destY:155 },
+    ],
+    collectibles: [[24,152],[128,152],[228,152],[8,128],[128,128],[220,128],[64,104],[172,104],[112,80],[8,56],[216,56],[112,32],[80,8]],
+    enemies: [
+      { px:0,  py:152, range:252, speed:45 },
+      { px:0,  py:128, range:52,  speed:65 },
+      { px:104,py:128, range:92,  speed:65 },
+      { px:32, py:104, range:112, speed:70 },
+      { px:80, py:80,  range:88,  speed:60 },
+      { px:64, py:8,   range:120, speed:75 },
+    ],
+    neighbors: {},
+  },
+};
+
+// ─── Room adjacency (stairs already encoded above) ────────────────────────
+// neighbors.left / right are already in the room data.
+
+// ─── Game state ───────────────────────────────────────────────────────────
+const TOTAL_ITEMS = Object.values(ROOMS).reduce((s,r)=>s+r.collectibles.length, 0);
+
+let state        = 'splash';   // 'splash' | 'playing' | 'dead' | 'win'
+let lives        = LIVES_MAX;
+let score        = 0;
+let roomName     = 'The Bathroom';
+let flash        = 0;          // global frame counter for animation
+let deathTimer   = 0;
+let winTimer     = 0;
+
+// Per-room runtime state
+const roomRuntime = {};
+function getRoomRuntime(name) {
+  if (!roomRuntime[name]) {
+    const rd = ROOMS[name];
+    roomRuntime[name] = {
+      collectibles: rd.collectibles.map(c=>({ x:c[0], y:c[1], taken:false })),
+      enemies: rd.enemies.map(e=>({
+        x: e.px, y: e.py, px: e.px, range: e.range,
+        speed: e.speed, dir: 1, flip: false,
+        frame: 0, frameTimer: 0,
+      })),
+    };
+  }
+  return roomRuntime[name];
+}
+
+// Player
+const player = {
+  x: 16, y: 160, w: 12, h: 16,
+  vx: 0, vy: 0,
+  onGround: false,
+  facingLeft: false,
+  walkFrame: 0, walkTimer: 0,
+  onStair: null,
+  climbFrame: 0, climbTimer: 0,
+  dying: false,
+  deathAngle: 0,
+};
+
+function spawnPlayer(x, y) {
+  player.x = x; player.y = y;
+  player.vx = 0; player.vy = 0;
+  player.onGround = false; player.onStair = null;
+  player.dying = false; player.deathAngle = 0;
+}
+
+// ─── Input ────────────────────────────────────────────────────────────────
+const keys = {};
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))
+    e.preventDefault();
+  if (state === 'splash' && (e.code === 'Space' || e.code === 'Enter')) startGame();
+  if (state === 'win'    && (e.code === 'Space' || e.code === 'Enter')) { state='splash'; }
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+function startGame() {
+  lives = LIVES_MAX; score = 0;
+  roomName = 'The Bathroom';
+  Object.keys(roomRuntime).forEach(k=>delete roomRuntime[k]);
+  getRoomRuntime(roomName);
+  spawnPlayer(16, 160);
+  state = 'playing';
+}
+
+// ─── Physics helpers ──────────────────────────────────────────────────────
+function getPlatforms(name) {
+  return ROOMS[name].platforms;
+}
+
+function collidePlatforms(name, px, py, pw, ph) {
+  const plats = getPlatforms(name);
+  let hit = null;
+  for (const p of plats) {
+    const [rx,ry,rw,rh] = p;
+    if (px < rx+rw && px+pw > rx && py < ry+rh && py+ph > ry) {
+      hit = p;
+    }
+  }
+  return hit;
+}
+
+function isOnStair(name, px, py, pw, ph) {
+  const rd = ROOMS[name];
+  for (const s of rd.stairs) {
+    const { rect: [sx,sy,sw,sh] } = s;
+    if (px < sx+sw && px+pw > sx && py < sy+sh && py+ph > sy) return s;
+  }
+  return null;
+}
+
+// ─── Update ───────────────────────────────────────────────────────────────
+let prevTime = null;
+function update(ts) {
+  if (!prevTime) prevTime = ts;
+  const dt = Math.min((ts - prevTime) / 1000, 0.05);
+  prevTime = ts;
+  flash++;
+
+  if (state !== 'playing') { requestAnimationFrame(update); draw(); return; }
+
+  const rt = getRoomRuntime(roomName);
+  const rd = ROOMS[roomName];
+
+  // ── Death animation ──
+  if (player.dying) {
+    deathTimer -= dt;
+    player.deathAngle += dt * 720;
+    if (deathTimer <= 0) {
+      lives--;
+      if (lives <= 0) { state = 'win'; winTimer = 4; }   // game over → win screen
+      else { spawnPlayer(16, 160); state = 'playing'; }
+    }
+    requestAnimationFrame(update); draw(); return;
+  }
+
+  // ── Stair check ──
+  const stairOver = isOnStair(roomName, player.x, player.y, player.w, player.h);
+  const climbUp   = keys['ArrowUp']   || keys['KeyW'];
+  const climbDown = keys['ArrowDown'] || keys['KeyS'];
+  const onStair   = !!stairOver && (climbUp || climbDown);
+
+  if (onStair) {
+    player.onStair = stairOver;
+    // Snap X to stair center
+    const sc = stairOver.rect[0] + stairOver.rect[2]/2 - player.w/2;
+    player.x += (sc - player.x) * Math.min(1, dt*12);
+    player.vy = 0;
+    if (climbUp)   player.y -= CLIMB_SPEED * dt;
+    if (climbDown) player.y += CLIMB_SPEED * dt;
+    // Clamp inside stair bounds
+    player.y = Math.max(stairOver.rect[1], Math.min(stairOver.rect[1]+stairOver.rect[3]-player.h, player.y));
+    player.climbTimer += dt;
+    if (player.climbTimer > 0.2) { player.climbFrame ^= 1; player.climbTimer = 0; }
+
+    // Stair room transition
+    if (climbUp && player.y <= stairOver.rect[1] + 2 && stairOver.dir === 'up') {
+      roomName = stairOver.target;
+      spawnPlayer(stairOver.destX, stairOver.destY);
+    }
+    if (climbDown && player.y >= stairOver.rect[1]+stairOver.rect[3]-player.h-2 && stairOver.dir === 'down') {
+      roomName = stairOver.target;
+      spawnPlayer(stairOver.destX, stairOver.destY);
+    }
+  } else {
+    player.onStair = null;
+
+    // ── Horizontal movement ──
+    const left  = keys['ArrowLeft']  || keys['KeyA'];
+    const right = keys['ArrowRight'] || keys['KeyD'];
+    player.vx = 0;
+    if (left)  { player.vx = -WALK_SPEED; player.facingLeft = true;  }
+    if (right) { player.vx =  WALK_SPEED; player.facingLeft = false; }
+
+    // Walking animation
+    if ((left || right) && player.onGround) {
+      player.walkTimer += dt;
+      if (player.walkTimer > 0.15) { player.walkFrame ^= 1; player.walkTimer = 0; }
+    } else if (!left && !right) { player.walkFrame = 0; }
+
+    // ── Jump ──
+    if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && player.onGround) {
+      player.vy = -JUMP_SPEED;
+      player.onGround = false;
+    }
+
+    // ── Gravity ──
+    player.vy += GRAVITY * dt;
+
+    // ── Move X ──
+    player.x += player.vx * dt;
+    player.x = Math.max(0, Math.min(NATIVE_W - player.w, player.x));
+
+    // ── Move Y ──
+    player.y += player.vy * dt;
+    player.onGround = false;
+
+    // Resolve platform collisions (check downward first, then upward)
+    for (const p of getPlatforms(roomName)) {
+      const [rx,ry,rw,rh] = p;
+      const overlapX = player.x < rx+rw && player.x+player.w > rx;
+      if (!overlapX) continue;
+      const prevBottom = (player.y + player.h) - (player.vy * dt);
+      const prevTop    = player.y - (player.vy * dt);
+      // Landing on top of platform
+      if (player.vy >= 0 && prevBottom <= ry + 2 && player.y + player.h >= ry) {
+        player.y = ry - player.h;
+        player.vy = 0;
+        player.onGround = true;
+      }
+      // Hitting underside
+      else if (player.vy < 0 && prevTop >= ry+rh - 2 && player.y <= ry+rh) {
+        player.y = ry + rh;
+        player.vy = 0;
+      }
+    }
+
+    // Clamp to floor / ceiling
+    if (player.y + player.h >= NATIVE_H) {
+      player.y = NATIVE_H - player.h;
+      player.vy = 0; player.onGround = true;
+    }
+    if (player.y < 0) { player.y = 0; player.vy = 0; }
+  }
+
+  // ── Side room transitions ──
+  const neigh = rd.neighbors || {};
+  if (player.x + player.w >= NATIVE_W && neigh.right) {
+    roomName = neigh.right; player.x = 2;
+  } else if (player.x <= 0 && neigh.left) {
+    roomName = neigh.left; player.x = NATIVE_W - player.w - 2;
+  }
+
+  // ── Collect items ──
+  const rrt = getRoomRuntime(roomName);
+  for (const c of rrt.collectibles) {
+    if (!c.taken &&
+        player.x < c.x+8 && player.x+player.w > c.x &&
+        player.y < c.y+8 && player.y+player.h > c.y) {
+      c.taken = true;
+      score += 100;
+    }
+  }
+
+  // Check win
+  const totalTaken = Object.values(roomRuntime).reduce((s,r)=>s+r.collectibles.filter(c=>c.taken).length,0);
+  if (totalTaken >= TOTAL_ITEMS) { state = 'win'; winTimer = 0; }
+
+  // ── Update enemies ──
+  const curRt = getRoomRuntime(roomName);
+  const curRd = ROOMS[roomName];
+  for (let i = 0; i < curRt.enemies.length; i++) {
+    const e   = curRt.enemies[i];
+    const def = curRd.enemies[i];
+    e.x += e.speed * e.dir * dt;
+    if (e.x > def.px + def.range) { e.x = def.px + def.range; e.dir = -1; e.flip = true;  }
+    if (e.x < def.px)             { e.x = def.px;             e.dir =  1; e.flip = false; }
+    e.frameTimer += dt;
+    if (e.frameTimer > 0.2) { e.frame = (e.frame+1) % GUARD_FRAMES.length; e.frameTimer = 0; }
+
+    // Collision with player
+    if (!player.dying &&
+        player.x < e.x+16 && player.x+player.w > e.x &&
+        player.y < e.y+16 && player.y+player.h > e.y) {
+      killPlayer();
+    }
+  }
+
+  requestAnimationFrame(update);
+  draw();
+}
+
+function killPlayer() {
+  player.dying = true;
+  deathTimer = 1.2;
+}
+
+// ─── Draw ─────────────────────────────────────────────────────────────────
+function draw() {
+  if (state === 'splash') { drawSplash(); return; }
+  if (state === 'win')    { drawWin();    return; }
+
+  const rd  = ROOMS[roomName];
+  const rt  = getRoomRuntime(roomName);
+
+  // ── Background ──
+  g.fillStyle = rd.bg;
+  g.fillRect(0, 0, NATIVE_W, NATIVE_H);
+
+  // ── Draw checkerboard room border (ZX Spectrum style attribute flash) ──
+  const blink = (flash >> 4) & 1;
+  const borderCol = blink ? rd.fg : rd.fgAlt;
+  // Top and bottom bands (like ZX Spectrum score area)
+  g.fillStyle = ZX.BLACK;
+  g.fillRect(0, 0, NATIVE_W, 8);
+
+  // ── Platforms (drawn as ZX Spectrum character cells with texture) ──
+  g.fillStyle = rd.fg;
+  for (const p of rd.platforms) {
+    const [rx,ry,rw,rh] = p;
+    g.fillStyle = rd.fg;
+    g.fillRect(rx, ry, rw, rh);
+    // Checkerboard highlight top edge
+    g.fillStyle = rd.fgAlt;
+    for (let cx = rx; cx < rx+rw; cx += CELL*2) {
+      g.fillRect(cx, ry, Math.min(CELL, rx+rw-cx), 1);
+    }
+  }
+
+  // ── Walls / barriers ──
+  for (const w of (rd.walls||[])) {
+    const [rx,ry,rw,rh] = w;
+    g.fillStyle = rd.fgAlt;
+    g.fillRect(rx, ry, rw, rh);
+    // Diagonal stripe
+    g.fillStyle = rd.fg;
+    for (let i = 0; i < rh; i += 4) {
+      g.fillRect(rx, ry+i, rw, 2);
+    }
+  }
+
+  // ── Stairs ──
+  for (const s of rd.stairs) {
+    const [sx,sy,sw,sh] = s.rect;
+    // Draw ladder
+    g.fillStyle = ZX.BYELLOW;
+    g.fillRect(sx, sy, 2, sh);
+    g.fillRect(sx+sw-2, sy, 2, sh);
+    g.fillStyle = ZX.BWHITE;
+    for (let ry = sy+2; ry < sy+sh; ry += 4) {
+      g.fillRect(sx+2, ry, sw-4, 1);
+    }
+  }
+
+  // ── Collectibles (flashing gems) ──
+  const gemFrame = GEM_FRAMES[(flash >> 3) & 1];
+  const gemColors = [ZX.BYELLOW, ZX.BWHITE, ZX.BCYAN, ZX.BMAGENTA];
+  const gemCol = gemColors[(flash >> 4) % gemColors.length];
+  for (const c of rt.collectibles) {
+    if (!c.taken) drawSprite8(g, gemFrame, gemCol, c.x, c.y);
+  }
+
+  // ── Enemies (guardians) ──
+  for (const e of rt.enemies) {
+    drawSprite16(g, GUARD_FRAMES[e.frame], GUARD_COLORS, Math.round(e.x), e.y, e.flip);
+  }
+
+  // ── Player ──
+  if (!player.dying) {
+    const frame = WILLY_FRAMES[player.walkFrame];
+    drawSprite16(g, frame, WILLY_COLORS, Math.round(player.x), Math.round(player.y), player.facingLeft);
+  } else {
+    // Death spin — draw a simple spinning X
+    const cx = player.x + player.w/2, cy = player.y + player.h/2;
+    const a = player.deathAngle * Math.PI / 180;
+    g.save();
+    g.translate(cx, cy);
+    g.rotate(a);
+    g.fillStyle = ZX.BRED;
+    g.fillRect(-6, -2, 12, 4);
+    g.fillRect(-2, -6, 4, 12);
+    g.restore();
+  }
+
+  // ── HUD strip at bottom ──
+  g.fillStyle = ZX.BLACK;
+  g.fillRect(0, NATIVE_H-8, NATIVE_W, 8);
+  drawText(g, `SCORE:${String(score).padStart(6,'0')}`, 2, NATIVE_H-7, ZX.BYELLOW);
+  drawText(g, `LIVES:`, 100, NATIVE_H-7, ZX.BCYAN);
+  for (let i = 0; i < lives; i++) {
+    g.fillStyle = ZX.BCYAN;
+    g.fillRect(138 + i*8, NATIVE_H-7, 5, 5);
+  }
+  // Room name scrolled at top
+  g.fillStyle = ZX.BLACK;
+  g.fillRect(0, 0, NATIVE_W, 8);
+  drawText(g, roomName.toUpperCase(), Math.max(0, (NATIVE_W - roomName.length*6)/2), 1, ZX.BWHITE);
+
+  // ── Blit scaled to main canvas ──
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(buf, 0, 0, W, H);
+
+  // ── CRT scanlines overlay ──
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  for (let y = 0; y < H; y += 2) ctx.fillRect(0, y, W, 1);
+}
+
+// Tiny 4×5 bitmap font (A-Z 0-9 space colon)
+const FONT = {
+  ' ':[0,0,0,0,0],
+  ':':[0,4,0,4,0],
+  'A':[14,17,31,17,17],
+  'B':[30,17,30,17,30],
+  'C':[14,17,16,17,14],
+  'D':[30,17,17,17,30],
+  'E':[31,16,30,16,31],
+  'F':[31,16,30,16,16],
+  'G':[14,16,19,17,14],
+  'H':[17,17,31,17,17],
+  'I':[14,4,4,4,14],
+  'J':[1,1,1,17,14],
+  'K':[17,18,28,18,17],
+  'L':[16,16,16,16,31],
+  'M':[17,27,21,17,17],
+  'N':[17,25,21,19,17],
+  'O':[14,17,17,17,14],
+  'P':[30,17,30,16,16],
+  'Q':[14,17,17,19,15],
+  'R':[30,17,30,18,17],
+  'S':[15,16,14,1,30],
+  'T':[31,4,4,4,4],
+  'U':[17,17,17,17,14],
+  'V':[17,17,17,10,4],
+  'W':[17,17,21,27,17],
+  'X':[17,10,4,10,17],
+  'Y':[17,10,4,4,4],
+  'Z':[31,2,4,8,31],
+  '0':[14,19,21,25,14],
+  '1':[4,12,4,4,14],
+  '2':[14,1,6,8,31],
+  '3':[30,1,6,1,30],
+  '4':[17,17,31,1,1],
+  '5':[31,16,30,1,30],
+  '6':[7,8,30,17,14],
+  '7':[31,1,2,4,4],
+  '8':[14,17,14,17,14],
+  '9':[14,17,15,1,14],
+};
+
+function drawText(gctx, text, x, y, color) {
+  gctx.fillStyle = color;
+  let cx = Math.round(x);
+  for (const ch of text.toUpperCase()) {
+    const rows = FONT[ch] || FONT[' '];
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 5; c++) {
+        if ((rows[r] >> (4-c)) & 1) gctx.fillRect(cx+c, y+r, 1, 1);
+      }
+    }
+    cx += 6; // 5px glyph + 1px gap
+  }
+}
+
+// ─── Splash screen ────────────────────────────────────────────────────────
+function drawSplash() {
+  // Cycle bg colours like ZX Spectrum loading stripe
+  const stripe = (flash >> 2) % 8;
+  const stripeColors = [ZX.BRED,ZX.BYELLOW,ZX.BGREEN,ZX.BCYAN,ZX.BBLUE,ZX.BMAGENTA,ZX.BWHITE,ZX.BRED];
+
+  g.fillStyle = ZX.BLACK;
+  g.fillRect(0, 0, NATIVE_W, NATIVE_H);
+
+  // Spectrum loading stripes at top
+  for (let i = 0; i < 8; i++) {
+    g.fillStyle = stripeColors[(i + stripe) % 8];
+    g.fillRect(i*32, 0, 32, 16);
+  }
+
+  // Border flash
+  g.fillStyle = stripeColors[stripe];
+  g.fillRect(0, 0, 4, NATIVE_H);
+  g.fillRect(NATIVE_W-4, 0, 4, NATIVE_H);
+  g.fillRect(0, 0, NATIVE_W, 4);
+  g.fillRect(0, NATIVE_H-4, NATIVE_W, 4);
+
+  // Title
+  drawBigText(g, 'MANIC', 24, 24, ZX.BYELLOW, 2);
+  drawBigText(g, 'WILLY', 24, 50, ZX.BCYAN, 2);
+
+  // Subtitle
+  drawText(g, 'A JET SET WILLY TRIBUTE', 10, 80, ZX.BWHITE);
+
+  // Draw Willy on splash
+  drawSprite16(g, WILLY_FRAMES[0], WILLY_COLORS, 112, 90, false);
+  drawSprite16(g, WILLY_FRAMES[0], WILLY_COLORS, 136, 90, true);
+
+  // Instructions
+  const blink2 = (flash >> 4) & 1;
+  if (blink2) drawText(g, 'PRESS SPACE TO START', 18, 130, ZX.BYELLOW);
+  drawText(g, 'COLLECT ALL ITEMS', 30, 145, ZX.BWHITE);
+  drawText(g, 'AVOID GUARDIANS', 34, 155, ZX.BRED);
+  drawText(g, `ITEMS: ${TOTAL_ITEMS}  LIVES: ${LIVES_MAX}`, 30, 168, ZX.BCYAN);
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(buf, 0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  for (let y = 0; y < H; y += 2) ctx.fillRect(0, y, W, 1);
+}
+
+function drawBigText(gctx, text, x, y, color, scale) {
+  gctx.fillStyle = color;
+  let cx = x;
+  for (const ch of text) {
+    const rows = FONT[ch] || FONT[' '];
+    for (let r = 0; r < 5; r++) {
+      for (let c = 0; c < 5; c++) {
+        if ((rows[r] >> (4-c)) & 1) gctx.fillRect(cx+c*scale, y+r*scale, scale, scale);
+      }
+    }
+    cx += 6 * scale; // 5 glyph + 1 gap, scaled
+  }
+}
+
+// ─── Win/Game Over screen ─────────────────────────────────────────────────
+function drawWin() {
+  g.fillStyle = ZX.BLACK;
+  g.fillRect(0,0,NATIVE_W,NATIVE_H);
+
+  const allTaken = Object.values(roomRuntime).reduce((s,r)=>s+r.collectibles.filter(c=>c.taken).length,0);
+  const won = allTaken >= TOTAL_ITEMS;
+
+  const col1 = (flash>>3)&1 ? ZX.BYELLOW : ZX.BWHITE;
+  const col2 = (flash>>3)&1 ? ZX.BCYAN   : ZX.BMAGENTA;
+
+  if (won) {
+    drawBigText(g, 'YOU', 50, 40, col1, 2);
+    drawBigText(g, 'WIN', 50, 68, col2, 2);
+    drawText(g, 'WILLY IS SAVED', 42, 100, ZX.BGREEN);
+  } else {
+    drawBigText(g, 'GAME', 30, 40, ZX.BRED, 2);
+    drawBigText(g, 'OVER', 30, 68, ZX.BMAGENTA, 2);
+  }
+
+  drawText(g, `FINAL SCORE: ${score}`, 20, 120, ZX.BYELLOW);
+  drawText(g, `ITEMS: ${Object.values(roomRuntime).reduce((s,r)=>s+r.collectibles.filter(c=>c.taken).length,0)}/${TOTAL_ITEMS}`, 20, 133, ZX.BCYAN);
+
+  const blink2 = (flash>>4)&1;
+  if (blink2) drawText(g, 'PRESS SPACE', 52, 160, ZX.BWHITE);
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(buf, 0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  for (let y = 0; y < H; y += 2) ctx.fillRect(0, y, W, 1);
+}
+
+// ─── Kick off ─────────────────────────────────────────────────────────────
+requestAnimationFrame(update);
+</script>
+</body>
+</html>
