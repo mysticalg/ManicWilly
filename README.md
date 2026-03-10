@@ -37,6 +37,15 @@ python3 src/validate_levels.py
 pytest -q
 ```
 
+
+## GitHub Pages deployment
+
+This repository now includes a **Deploy web build to GitHub Pages** workflow that publishes `index.html` from the `main` branch.
+
+1. Push changes to `main` (or run the workflow manually from the Actions tab).
+2. In GitHub repo settings, set **Pages → Source** to **GitHub Actions** (one-time setup).
+3. Your site will be available at: `https://<your-github-username>.github.io/<repo-name>/`.
+
 ## Build / distributables
 
 ```bash
