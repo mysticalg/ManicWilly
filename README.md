@@ -1,55 +1,67 @@
 # ManicWilly
 
-A playable Jet Set Willy-inspired platformer prototype with:
+A Jet Set Willy tribute platformer — pure HTML5, zero dependencies. Open `index.html` in any browser and play instantly.
 
-- Splash screen
-- High score table
-- Multi-room collectible run
-- Animated enemies/backgrounds
-- Export workflow for desktop + Android packaging guidance
+## How to play
 
-## Run locally
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python3 src/manicwilly_game.py
-```
+Just open `index.html` in a browser. No install, no build step required.
 
 ## Controls
 
-- Move: `A/D` or arrows
-- Jump: `W`, `UP`, or `SPACE`
-- Start game: `ENTER`
+| Key | Action |
+|-----|--------|
+| `←` `→` / `A` `D` | Move left / right |
+| `Space` / `↑` / `W` | Jump |
+| `↑` / `↓` on a ladder | Climb up / down |
+| `Space` / `Enter` | Start / restart |
 
-## Level/content status
+## The Map — 20 Rooms across 5 Floors
 
-- 12 interconnected rooms in `data/rooms.json`
-- 23 collectibles total
-- Enemy patrol paths per room
-- Completion triggers win screen + persists high score to `data/highscores.json`
-
-## Validation
-
-```bash
-python3 src/validate_levels.py
-pytest -q
+```
+ROW 0 (ROOF)    : The Roof → The Tree → The Conservatory
+ROW 1 (UPPER)   : The Master Bedroom → The Landing → The Trophy Room
+ROW 2 (MAIN)    : The Bathroom → The Bedroom → The Ballroom → The Wine Cellar
+ROW 3 (KITCHEN) : The Kitchen → The Kitchen West → The Back Passage → The Wine Store
+ROW 4 (BASEMENT): The Cellar → The Crypt → The Caverns
+ROW 5 (DEEP)    : The Ship → The Engine Room → The Deep Caverns
 ```
 
-## Build / distributables
+Rooms connect horizontally (walk off screen edge) and vertically (use ladders marked in yellow).
 
-```bash
-./scripts/export_all.sh --check
-./scripts/export_all.sh
-```
+## Room themes & guardians
 
-The local export script builds a Linux distributable in this environment.
+| Room | Enemy type |
+|------|-----------|
+| The Roof / The Tree | Birds |
+| The Conservatory | Butterflies |
+| The Master Bedroom / The Landing / The Trophy Room | Guardians |
+| The Bathroom | Maria (woman protecting the toilet) + Guardians |
+| The Bedroom / The Ballroom | Guardians |
+| The Wine Cellar / The Wine Store | Bottles |
+| The Kitchen | Spoons + Blenders |
+| The Kitchen West | Forks + Spoons + Blenders |
+| The Back Passage | Guardians |
+| The Cellar | Ghosts |
+| The Crypt | Skeletons + Ghosts |
+| The Caverns / The Deep Caverns | Bats |
+| The Ship | Waves |
+| The Engine Room | Gears |
 
-GitHub Actions now builds distributables for:
+## Features
 
-- Windows (`ManicWilly.exe` zipped artifact)
-- macOS (tar.gz artifact)
-- Android (debug `.apk` from Buildozer)
+- **20 interconnected rooms** across 5 vertical floors
+- **Diagonal staircases** — JSW-style step platforms wind through each room
+- **Ladders** — yellow rungs connect floors; press Up/Down to climb
+- **13 themed enemy sprites** — pixel-art guardians unique to each area
+- **Maria** — the bathroom guardian protecting her toilet (slow but determined)
+- **Flashing collectibles** — gather every item in all 20 rooms to win
+- **5 lives** — touch any guardian and lose a life; run out and it's Game Over
+- **ZX Spectrum aesthetic** — 256×192 native resolution, scaled 3× with CRT scanline overlay
+- **Score tracker** — 100 points per item; items/total shown in HUD
 
-Run the **Build distributables** workflow from the Actions tab (or on PR/push) and download artifacts from the workflow run.
+## Technical notes
+
+- Single self-contained HTML file (~1300 lines of vanilla JS)
+- Native ZX Spectrum resolution (256×192) rendered to an off-screen canvas, scaled 3× to display
+- CRT scanline overlay for authenticity
+- Sprite data stored as 16-bit row bitmaps per ZX Spectrum attribute cell convention
