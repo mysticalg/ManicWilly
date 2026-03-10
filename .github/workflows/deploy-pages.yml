@@ -32,6 +32,10 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          # Auto-enable Pages for repos where the Pages site has not been created yet.
+          # This prevents the "Get Pages site failed"/404 error on first deployment.
+          enablement: true
 
       - name: Prepare deploy artifact
         run: |
