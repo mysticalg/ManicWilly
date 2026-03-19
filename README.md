@@ -62,3 +62,8 @@ GitHub Actions now builds distributables for:
 - Android (debug `.apk` from Buildozer)
 
 Run the **Build distributables** workflow from the Actions tab (or on PR/push) and download artifacts from the workflow run.
+
+## Support
+
+If you'd like to support this project, you can buy me a coffee:
+[buymeacoffee.com/dhooksterm](https://buymeacoffee.com/dhooksterm)
