@@ -28,6 +28,53 @@
     letter-spacing: 1px;
   }
 </style>
+<!-- Footer AdSense -->
+  <style data-footer-adsense-style>
+    .footer-adsense {
+      margin-top: 24px;
+      padding-top: 18px;
+      display: grid;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .footer-adsense__label {
+      margin: 0;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.72;
+    }
+
+    .footer-adsense__unit {
+      display: block;
+      width: 100%;
+      min-height: 90px;
+    }
+  </style>
+  <script src="./adsense-config.js"></script>
+  <script>
+    (function () {
+      const config = window.__FOOTER_ADSENSE__;
+      if (
+        !config ||
+        !config.client ||
+        !config.slot ||
+        document.querySelector("script[data-footer-adsense-loader]")
+      ) {
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.async = true;
+      script.src =
+        "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" +
+        encodeURIComponent(config.client);
+      script.crossOrigin = "anonymous";
+      script.dataset.footerAdsenseLoader = "true";
+      document.head.appendChild(script);
+    })();
+  </script>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
@@ -927,5 +974,38 @@ requestAnimationFrame(update);
 >
   Support this project
 </a>
+<!-- Footer AdSense slot -->
+  <div class="footer-adsense" data-footer-adsense hidden>
+    <p class="footer-adsense__label">Advertisement</p>
+    <ins
+      class="adsbygoogle footer-adsense__unit"
+      style="display:block"
+      data-ad-format="auto"
+      data-full-width-responsive="true"
+    ></ins>
+  </div>
+  <script>
+    (function () {
+      const wrapper = document.currentScript.previousElementSibling;
+      const config = window.__FOOTER_ADSENSE__;
+      if (!wrapper || !config || !config.client || !config.slot) {
+        return;
+      }
+
+      const unit = wrapper.querySelector(".adsbygoogle");
+      if (!unit) {
+        return;
+      }
+
+      unit.setAttribute("data-ad-client", config.client);
+      unit.setAttribute("data-ad-slot", config.slot);
+      wrapper.hidden = false;
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch (error) {
+        console.error("Footer AdSense failed to render", error);
+      }
+    })();
+  </script>
 </body>
 </html>
